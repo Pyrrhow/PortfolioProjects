@@ -1,10 +1,12 @@
--- testar conexão 
+-------------------------------------------------------------------------------
+-- Exploração Inicial
+-------------------------------------------------------------------------------
 SELECT 
 	*
 FROM
 	CovidDB..CovidTable
-
--- exploração inicial
+	
+-- Filtrar Colunas
 
 SELECT 
 	location,
@@ -18,8 +20,12 @@ FROM
 	CovidDB..CovidTable
 ORDER BY
 	1,2
+	
+-------------------------------------------------------------------------------
+-- Calculos
+-------------------------------------------------------------------------------
 
--- Calcular o percentual de mortes total e por dia 
+--percentual de mortes total e por dia  
 
 SELECT 
 	location,
@@ -117,8 +123,10 @@ WHERE
 ORDER BY 
 	2, 3
 
-
+-------------------------------------------------------------------------------
 -- CTE
+-------------------------------------------------------------------------------
+
 
 WITH PopvsVac (Location, Date, Population, New_Vacinations, TotalVacination )
 as
@@ -139,8 +147,10 @@ SELECT
 	(TotalVacination / Population) * 100 AS ppVacinated
 FROM PopvsVac
 
-
+-------------------------------------------------------------------------------
 -- Tabela temporaria
+-------------------------------------------------------------------------------
+
 
 DROP TABLE IF exists #ppPopulacaoVacinada -- caso queira modificar a tabela
 CREATE TABLE #ppPopulacaoVacinada
@@ -170,7 +180,9 @@ SELECT
 	(TotalVacination / Population) * 100 AS ppVacinated
 FROM #ppPopulacaoVacinada
 
--- Criando View
+-------------------------------------------------------------------------------
+-- Views
+-------------------------------------------------------------------------------
 
 CREATE VIEW PopulacaoVacinada AS
 WITH PopvsVac (Location, Date, Population, New_Vacinations, TotalVacination )
