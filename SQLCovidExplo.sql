@@ -1,12 +1,13 @@
 -------------------------------------------------------------------------------
 -- Exploração Inicial
 -------------------------------------------------------------------------------
+
 SELECT 
 	*
 FROM
 	CovidDB..CovidTable
 	
--- Filtrar Colunas
+-- Filtrar e Ordenar Colunas
 
 SELECT 
 	location,
@@ -20,12 +21,12 @@ FROM
 	CovidDB..CovidTable
 ORDER BY
 	1,2
-	
+
 -------------------------------------------------------------------------------
 -- Calculos
 -------------------------------------------------------------------------------
 
---percentual de mortes total e por dia  
+-- Percentual de mortes total e por dia  
 
 SELECT 
 	location,
