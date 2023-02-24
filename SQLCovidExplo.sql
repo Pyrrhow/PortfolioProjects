@@ -4,9 +4,8 @@
 
 SELECT 
 	*
-FROM
-	CovidDB..CovidTable
-	
+FROM CovidDB..CovidTable
+
 -- Filtrar e Ordenar Colunas
 
 SELECT 
@@ -17,68 +16,52 @@ SELECT
 	total_deaths,
 	new_deaths,
 	population
-FROM
-	CovidDB..CovidTable
+FROM CovidDB..CovidTable
+WHERE location like '%brazil%'
 ORDER BY
 	1,2
-
+	
 -------------------------------------------------------------------------------
 -- Calculos
 -------------------------------------------------------------------------------
 
--- Percentual de mortes total e por dia  
+-- Letalidade
 
 SELECT 
 	location,
 	date,
-	(total_deaths/total_cases)*100 as MortesTotal,
-	(new_deaths / new_cases)*100 as MortesDiaria
-FROM
-	CovidDB..CovidTable
-WHERE
-	--location like '%brazil%' and
-	new_cases > 0 -- caso nao haja novos casos no dia para nao dividir por 0
+	new_cases,
+	total_cases,
+	new_deaths,
+	(total_deaths/total_cases)*100 as Letalidade
+FROM CovidDB..CovidTable
+--WHERE	location like '%brazil%'
 ORDER BY
-	1,2 desc
+	1,2
 
 -- Taxa de infectados por País e percentual da população infectada
-
-SELECT 
-	location,
-	MAX(total_cases) as ContagemInfectados,
-	MAX((total_cases/population))*100 as PercentPopulationInfected,
-	population
-FROM
-	CovidDB..CovidTable
---WHERE
---	population > 1000000
---	location like '%brazil%'
-GROUP BY
-	location, population
-ORDER BY
-	PercentPopulationInfected desc
-
 -- Numero de mortes por país
 
 SELECT 
 	location,
-	MAX(CAST(total_deaths AS INT)) AS TotalDeathCount
-FROM
-	CovidDB..CovidTable
-WHERE
-	continent is not null
+	population,
+	MAX(total_cases) as ContagemInfectados,
+	MAX((total_cases/population))*100 as ppPopulacaoInfectada,
+	MAX(CAST(total_deaths AS INT)) as TotalMortes
+FROM CovidDB..CovidTable
+WHERE continent is not null
 GROUP BY
 	location, population
 ORDER BY
-	TotalDeathCount desc
+	--ppPopulacaoInfectada desc
+	TotalMortes desc
 
 -- Numero de mortes por continente
 
 SELECT 
 	location,
-	MAX(CAST(total_deaths AS INT)) AS TotalDeathCount
-FROM
-	CovidDB..CovidTable
+	MAX(CAST(total_deaths AS INT)) AS TotalMortes
+FROM CovidDB..CovidTable
 WHERE
 	location = 'World'
 	or location = 'Europe'
@@ -87,26 +70,20 @@ WHERE
 	or location = 'South America'
 	or location = 'Africa'
 	or location = 'Oceania'
-GROUP BY
-	location, population
-ORDER BY
-	TotalDeathCount desc
+GROUP BY location, population
+ORDER BY TotalMortes desc
 
 -- Soma de infectados e mortes por dia
 
 SELECT 
 	date,
-	SUM(new_cases) AS SomaInfectados,
-	SUM(CAST(new_deaths as INT)) AS SomaMortes,
-	(SUM(CAST(new_deaths as INT))/SUM(new_cases)) AS ppMortes
-FROM
-	CovidDB..CovidTable
-WHERE
-	continent is not null
-GROUP BY
-	date
-ORDER BY 
-	3 desc
+	SUM(new_cases) as SomaInfectados,
+	SUM(CAST(new_deaths as INT)) as SomaMortes,
+	(SUM(CAST(new_deaths as INT))/SUM(new_cases)) as ppMortes
+FROM CovidDB..CovidTable
+WHERE continent is not null
+GROUP BY date
+ORDER BY 3 desc
 
 -- Soma de vacinados ate o dia por país
 
@@ -115,21 +92,19 @@ SELECT
 	date,
 	population,
 	new_vaccinations,
-	SUM(CAST(new_vaccinations as FLOAT)) OVER (PARTITION BY location ORDER BY date)	AS TotalVacination
+	SUM(CAST(new_vaccinations as FLOAT)) OVER (PARTITION BY location ORDER BY date)	AS TotalVacinas,
+	total_vaccinations
 FROM
 	CovidDB..CovidTable
-WHERE
-	continent is not null
-	--and location like '%brazil%'
-ORDER BY 
-	2, 3
+WHERE continent is not null and location like '%brazil%'
+ORDER BY 1,2
+
 
 -------------------------------------------------------------------------------
 -- CTE
 -------------------------------------------------------------------------------
 
-
-WITH PopvsVac (Location, Date, Population, New_Vacinations, TotalVacination )
+WITH cteVac (Location, Date, Population, New_Vacinations, TotalVacinas )
 as
 (
 SELECT 
@@ -137,21 +112,19 @@ SELECT
 	date,
 	population,
 	new_vaccinations,
-	SUM(CAST(new_vaccinations as FLOAT)) OVER (PARTITION BY location ORDER BY date)	AS TotalVacination
-FROM
-	CovidDB..CovidTable
-WHERE
-	continent is not null
+	SUM(CAST(new_vaccinations as FLOAT)) OVER (PARTITION BY location ORDER BY date)	AS TotalVacinas
+FROM CovidDB..CovidTable
+WHERE continent is not null
 )
 SELECT 
 	*,
-	(TotalVacination / Population) * 100 AS ppVacinated
-FROM PopvsVac
+	(TotalVacinas / Population) * 100 AS ppVacinada
+FROM cteVac
+
 
 -------------------------------------------------------------------------------
 -- Tabela temporaria
 -------------------------------------------------------------------------------
-
 
 DROP TABLE IF exists #ppPopulacaoVacinada -- caso queira modificar a tabela
 CREATE TABLE #ppPopulacaoVacinada
@@ -169,24 +142,69 @@ SELECT
 	date,
 	population,
 	new_vaccinations,
-	SUM(CAST(new_vaccinations as FLOAT)) OVER (PARTITION BY location ORDER BY date)	AS TotalVacination
-FROM
-	CovidDB..CovidTable
-WHERE
-	continent is not null
+	SUM(CAST(new_vaccinations as FLOAT)) OVER (PARTITION BY location ORDER BY date)	AS TotalVacinas
+FROM CovidDB..CovidTable
+WHERE continent is not null
 
 
 SELECT 
 	*,
-	(TotalVacination / Population) * 100 AS ppVacinated
+	(TotalVacinas / Population) * 100 AS ppVacinada
 FROM #ppPopulacaoVacinada
 
 -------------------------------------------------------------------------------
 -- Views
 -------------------------------------------------------------------------------
 
+CREATE VIEW Letalidade AS
+SELECT 
+	location,
+	date,
+	new_cases,
+	total_cases,
+	new_deaths,
+	(total_deaths/total_cases)*100 as Letalidade
+FROM CovidDB..CovidTable
+
+CREATE VIEW InfectadosPorPais AS
+SELECT 
+	location,
+	population,
+	MAX(total_cases) as ContagemInfectados,
+	MAX((total_cases/population))*100 as ppPopulacaoInfectada,
+	MAX(CAST(total_deaths AS INT)) as TotalMortes
+FROM CovidDB..CovidTable
+WHERE continent is not null
+GROUP BY
+	location, population
+
+CREATE VIEW InfectadosPorContinente AS
+SELECT 
+	location,
+	MAX(CAST(total_deaths AS INT)) AS TotalMortes
+FROM CovidDB..CovidTable
+WHERE
+	location = 'World'
+	or location = 'Europe'
+	or location = 'Asia'
+	or location = 'North America'
+	or location = 'South America'
+	or location = 'Africa'
+	or location = 'Oceania'
+GROUP BY location, population
+
+CREATE VIEW SomaMortes AS
+SELECT 
+	date,
+	SUM(new_cases) as SomaInfectados,
+	SUM(CAST(new_deaths as INT)) as SomaMortes,
+	(SUM(CAST(new_deaths as INT))/SUM(new_cases)) as ppMortes
+FROM CovidDB..CovidTable
+WHERE continent is not null
+GROUP BY date
+
 CREATE VIEW PopulacaoVacinada AS
-WITH PopvsVac (Location, Date, Population, New_Vacinations, TotalVacination )
+WITH PopvsVac (Local, Data, Populacao, NovasVacinas, TotalVacinado)
 as
 (
 SELECT 
@@ -195,12 +213,10 @@ SELECT
 	population,
 	new_vaccinations,
 	SUM(CAST(new_vaccinations as FLOAT)) OVER (PARTITION BY location ORDER BY date)	AS TotalVacination
-FROM
-	CovidDB..CovidTable
-WHERE
-	continent is not null
+FROM CovidDB..CovidTable
+WHERE continent is not null
 )
 SELECT 
 	*,
-	(TotalVacination / Population) * 100 AS ppVacinated
+	(TotalVacinado / Populacao) * 100 AS ppVacinado
 FROM PopvsVac
