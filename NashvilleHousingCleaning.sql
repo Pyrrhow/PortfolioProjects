@@ -1,16 +1,14 @@
 SELECT
 	*
-FROM
-	PortfolioDB..NashvilleHousing
+FROM PortfolioDB..NashvilleHousing
 -------------------------------------------------------------------------------
 -- Standardize Date Format
 -------------------------------------------------------------------------------
 
 SELECT
-	SaleDate,
+	SaleDate
 	CONVERT(Date,SaleDate)
-FROM
-	PortfolioDB..NashvilleHousing
+FROM PortfolioDB..NashvilleHousing
 
 -- rename column
 
@@ -24,6 +22,11 @@ ADD SaleDate Date;
 UPDATE NashvilleHousing
 SET SaleDate = CONVERT(Date,OldSaleDate)
 
+SELECT
+	SaleDate,
+	OldSaleDate
+FROM PortfolioDB..NashvilleHousing
+
 -------------------------------------------------------------------------------
 -- Populate Property Address Data
 -------------------------------------------------------------------------------
@@ -32,20 +35,16 @@ SET SaleDate = CONVERT(Date,OldSaleDate)
 
 SELECT 
 	PropertyAddress
-FROM
-	PortfolioDB..NashvilleHousing
-WHERE 
-	PropertyAddress is null
+FROM PortfolioDB..NashvilleHousing
+WHERE PropertyAddress is null
 
 -- The ParcelID and the PropertyAddress have a relationship
 
 SELECT 
 	ParcelID,
 	PropertyAddress
-FROM
-	PortfolioDB..NashvilleHousing
-ORDER BY
-	1
+FROM PortfolioDB..NashvilleHousing
+ORDER BY 1
 
 -- Joining the table with it self
 
@@ -57,8 +56,7 @@ SELECT
 	b.ParcelID, 
 	b.PropertyAddress,
 	ISNULL(a.PropertyAddress,b.PropertyAddress) as CopiedAddress
-FROM
-	PortfolioDB..NashvilleHousing a
+FROM PortfolioDB..NashvilleHousing a
 JOIN
 	PortfolioDB..NashvilleHousing b
 	ON a.ParcelID = b.ParcelID
@@ -69,8 +67,7 @@ WHERE a.PropertyAddress is null
 
 UPDATE a
 SET PropertyAddress = ISNULL(a.PropertyAddress,b.PropertyAddress)
-FROM
-	PortfolioDB..NashvilleHousing a
+FROM PortfolioDB..NashvilleHousing a
 JOIN
 	PortfolioDB..NashvilleHousing b
 	ON a.ParcelID = b.ParcelID
@@ -87,8 +84,7 @@ SELECT
 	PropertyAddress,
 	SUBSTRING(PropertyAddress, 1, CHARINDEX(',', PropertyAddress)-1) as Address,
 	SUBSTRING(PropertyAddress, CHARINDEX(',', PropertyAddress)+1 ,LEN(PropertyAddress))  as City
-FROM
-	PortfolioDB..NashvilleHousing
+FROM PortfolioDB..NashvilleHousing
 
 ALTER TABLE NashvilleHousing
 ADD PropertySplitAddress NVARCHAR(255);
@@ -108,8 +104,7 @@ SELECT
 	PARSENAME(REPLACE(OwnerAddress,',','.'),3) AS Adress,
 	PARSENAME(REPLACE(OwnerAddress,',','.'),2) AS City,
 	PARSENAME(REPLACE(OwnerAddress,',','.'),1) AS State
-FROM
-	PortfolioDB..NashvilleHousing
+FROM PortfolioDB..NashvilleHousing
 
 ALTER TABLE NashvilleHousing
 ADD OwnerSplitAddress NVARCHAR(255);
@@ -136,12 +131,9 @@ SET OwnerSplitState = PARSENAME(REPLACE(OwnerAddress,',','.'),1)
 SELECT
 	DISTINCT(SoldAsVacant),
 	COUNT (SoldAsVacant)
-FROM 
-	PortfolioDB..NashvilleHousing
-GROUP BY
-	SoldAsVacant
-ORDER BY
-	2
+FROM PortfolioDB..NashvilleHousing
+GROUP BY SoldAsVacant
+ORDER BY 2
 
 SELECT
 	SoldAsVacant,
@@ -149,8 +141,7 @@ SELECT
 		 WHEN SoldAsVacant = 'N' THEN 'No'
 		 ELSE SoldAsVacant
 		 END
-FROM 
-	PortfolioDB..NashvilleHousing
+FROM PortfolioDB..NashvilleHousing
 WHERE
 	SoldAsVacant = 'Y'
 	or SoldAsVacant = 'N'
@@ -160,8 +151,7 @@ SET SoldAsVacant =	CASE WHEN SoldAsVacant = 'Y' THEN 'Yes'
 						 WHEN SoldAsVacant = 'N' THEN 'No'
 						 ELSE SoldAsVacant
 						 END
-FROM 
-	PortfolioDB..NashvilleHousing
+FROM PortfolioDB..NashvilleHousing
 
 
 -------------------------------------------------------------------------------
@@ -185,8 +175,29 @@ WITH RowNumCTE AS(
 			ORDER BY
 				UniqueID
 		) row_num
-	FROM 
-		PortfolioDB..NashvilleHousing
+	FROM PortfolioDB..NashvilleHousing
+)
+Select * 
+FROM RowNumCTE
+WHERE row_num > 1
+
+-- deletar
+
+WITH RowNumCTE AS(
+	SELECT
+		*,
+		ROW_NUMBER() OVER 
+		(
+			PARTITION BY 
+				ParcelID,
+				PropertyAddress,
+				SalePrice,
+				SaleDate,
+				LegalReference
+			ORDER BY
+				UniqueID
+		) row_num
+	FROM PortfolioDB..NashvilleHousing
 )
 DELETE
 FROM RowNumCTE
@@ -196,10 +207,9 @@ WHERE row_num > 1
 -- Delete Duplicated Columns
 -------------------------------------------------------------------------------
 
-SELECT 
-	* 
-FROM 
-	PortfolioDB..NashvilleHousing
-
 ALTER TABLE PortfolioDB..NashvilleHousing
 DROP COLUMN OwnerAddress, PropertyAddress, OldSaleDate
+
+SELECT 
+	* 
+FROM PortfolioDB..NashvilleHousing
